@@ -76,7 +76,8 @@ MangaKun/                          ← 作業フォルダ = Git リポジトリ
 │   │   ├─ gen_image.py            ← Gemini API 呼び出し（参照画像・アスペクト比指定）
 │   │   ├─ compose_page.py         ← コマ配置・ページ合成（manga.yaml → pages/pNN.jpg）
 │   │   ├─ lettering.py            ← 縦書きセリフ・吹き出し・効果音の描画（compose / export から使う）
-│   │   ├─ export_kindle.py        ← EPUB（固定レイアウト・右綴じ）/ PDF / 表紙の書き出し
+│   │   ├─ export_kindle.py        ← EPUB（固定レイアウト・右綴じ）/ PDF / 表紙 / 一覧画像（カラー・白黒）の書き出し
+│   │   ├─ check_epub.py           ← W3C EPUBCheck で EPUB を検証（Java は uv が自動で用意）
 │   │   └─ open_file.py            ← 完成画像を OS 標準ビューアで開く（Win: start / Mac: open）
 │   ├─ layouts/                    ← コマ割りテンプレート（1〜6コマ、見開き用など）
 │   ├─ styles.md                   ← 画風プリセット（少女漫画、少年漫画、劇画、ほのぼの、絵本風…）
@@ -178,9 +179,11 @@ pages:
 | 表紙 | 1600×2560px 以上の JPEG（タイトル文字入り） |
 | EPUB | EPUB3 固定レイアウト、`page-progression-direction="rtl"`（右綴じ） |
 | PDF | 確認・予備用 |
-| 確認方法 | Kindle Previewer 3 で表示確認してから KDP にアップロード |
+| 確認方法 | `check_epub.py`（EPUBCheck）でエラー0件 → Kindle Previewer 3 で表示確認 → KDP にアップロード |
 
-- カラーが既定のため、白黒 E-ink 端末ではグレースケール表示になる。そのため自己チェックでは、白黒にしたときに人物と背景が見分けられるか（明暗差が十分か）も確認する
+- カラーが既定のため、白黒 E-ink 端末ではグレースケール表示になる。そのため自己チェックでは、白黒にしたときに人物と背景が見分けられるか（明暗差が十分か）も確認する（`output/preview_gray.jpg`）
+- OPF の主な設定: `rendition:layout=pre-paginated`、`book-type=comic`、`primary-writing-mode=horizontal-rl`、`original-resolution=1600x2560`、spine は `page-progression-direction="rtl"`。表紙は単独（center）、本文は右ページから右・左の交互
+- KDP には `<タイトル>.epub` を本文として、`cover.jpg` を表紙としてアップロードする
 - KDP 登録時に「AI 生成コンテンツ」の申告が必要（テキスト・画像とも）
 - 出版前に KDP の最新の画像要件・EPUB 要件を確認する
 
