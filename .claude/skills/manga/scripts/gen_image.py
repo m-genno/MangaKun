@@ -35,7 +35,7 @@ from google.genai import errors, types
 from PIL import Image
 
 SKILL_DIR = Path(__file__).resolve().parents[1]
-REPO_DIR = SKILL_DIR.parents[1]
+REPO_DIR = SKILL_DIR.parents[2]
 ASPECTS = ["1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
 RETRY_STATUS = {429, 500, 502, 503, 504}
 
@@ -107,6 +107,7 @@ def main() -> None:
     config = types.GenerateContentConfig(
         response_modalities=["IMAGE"],
         image_config=types.ImageConfig(aspect_ratio=args.aspect, image_size=args.size),
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
     )
     client = genai.Client(api_key=key)
     started = time.time()
