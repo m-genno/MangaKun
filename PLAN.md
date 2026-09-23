@@ -69,11 +69,14 @@ MangaKun/                          ← 作業フォルダ = Git リポジトリ
 ├─ .env                            ← 実際の API キー（Git 管理外）
 ├─ README.md                       ← セットアップ手順
 ├─ PLAN.md                         ← 本ファイル
+├─ .claude/settings.json          ← 許可設定（スキルのスクリプト実行・manga.yaml の編集・git pull を許可、.env の読み取りを禁止）
 ├─ .claude/skills/manga/
 │   ├─ SKILL.md                    ← 作業手順・モード・修正ルール
-│   ├─ config.yaml                 ← モデル名、既定の色、リテイク上限、生成枚数上限など
+│   ├─ manga_yaml.md               ← manga.yaml の書き方・セリフと吹き出しのルール
+│   ├─ config.yaml                 ← モデル名・料金表、リテイク上限、生成枚数上限、ページ寸法など
 │   ├─ scripts/
 │   │   ├─ gen_image.py            ← Gemini API 呼び出し（参照画像・アスペクト比指定）
+│   │   ├─ gen_panels.py           ← manga.yaml から設定画・コマ・表紙をまとめて生成（並行・上限チェック・採用版の書き戻し）
 │   │   ├─ compose_page.py         ← コマ配置・ページ合成（manga.yaml → pages/pNN.jpg）
 │   │   ├─ lettering.py            ← 縦書きセリフ・吹き出し・効果音の描画（compose / export から使う）
 │   │   ├─ export_kindle.py        ← EPUB（固定レイアウト・右綴じ）/ PDF / 表紙 / 一覧画像（カラー・白黒）の書き出し

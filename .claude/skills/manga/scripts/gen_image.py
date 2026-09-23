@@ -15,6 +15,8 @@
 - 出力先に同名ファイルがあれば上書きせず、p01_01_v2.png のように番号を付けて保存する
 - 保存したパスを標準出力の最終行に `SAVED: <path>` と出す
 - --log を付けると、生成1回ごとに JSON 1行を追記する（枚数・費用の集計用）
+
+gen_panels.py からは generate_image() を import して使う。
 """
 
 from __future__ import annotations
@@ -25,6 +27,7 @@ import io
 import json
 import os
 import sys
+import threading
 import time
 from pathlib import Path
 
@@ -38,16 +41,21 @@ SKILL_DIR = Path(__file__).resolve().parents[1]
 REPO_DIR = SKILL_DIR.parents[2]
 ASPECTS = ["1:1", "3:2", "2:3", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"]
 RETRY_STATUS = {429, 500, 502, 503, 504}
+_log_lock = threading.Lock()
+_path_lock = threading.Lock()
 
 
-def fail(msg: str) -> None:
-    print(f"ERROR: {msg}", file=sys.stderr)
-    sys.exit(1)
+class GenError(Exception):
+    """生成に失敗した（API エラー・安全フィルタなど）。"""
 
 
 def load_config() -> dict:
     with open(SKILL_DIR / "config.yaml", encoding="utf-8") as f:
         return yaml.safe_load(f)
+
+
+def price_usd(model: str, size: str) -> float | None:
+    return (load_config()["image"].get("prices_usd", {}).get(model) or {}).get(size)
 
 
 def next_free_path(out: Path) -> Path:
@@ -62,7 +70,15 @@ def next_free_path(out: Path) -> Path:
         n += 1
 
 
-def generate(client: genai.Client, model: str, contents: list, config: types.GenerateContentConfig):
+def _client() -> genai.Client:
+    load_dotenv(REPO_DIR / ".env")
+    key = os.environ.get("GEMINI_API_KEY", "")
+    if not key or not key.isascii():
+        raise GenError(f"GEMINI_API_KEY が設定されていません。{REPO_DIR / '.env'} にキーを記入してください")
+    return genai.Client(api_key=key)
+
+
+def _call(client: genai.Client, model: str, contents: list, config: types.GenerateContentConfig):
     for attempt in range(3):
         try:
             return client.models.generate_content(model=model, contents=contents, config=config)
@@ -72,7 +88,77 @@ def generate(client: genai.Client, model: str, contents: list, config: types.Gen
                 print(f"API エラー {e.code}。{wait}秒後に再試行します", file=sys.stderr)
                 time.sleep(wait)
                 continue
-            fail(f"API エラー {e.code}: {e.message}")
+            raise GenError(f"API エラー {e.code}: {e.message}") from e
+
+
+def generate_image(prompt: str, out: Path, refs: list[Path] | None = None, aspect: str | None = None,
+                   size: str | None = None, model: str | None = None, log: Path | None = None,
+                   label: str = "") -> Path:
+    """1枚生成して保存し、保存先を返す。失敗したら GenError。"""
+    cfg = load_config()["image"]
+    aspect, size, model = aspect or cfg["aspect"], size or cfg["size"], model or cfg["model"]
+    if aspect not in ASPECTS:
+        raise GenError(f"アスペクト比 {aspect} は使えません（{', '.join(ASPECTS)}）")
+    refs = refs or []
+    contents: list = [prompt]
+    for ref in refs:
+        if not ref.exists():
+            raise GenError(f"参照画像が見つかりません: {ref}")
+        contents.append(Image.open(ref))
+
+    config = types.GenerateContentConfig(
+        response_modalities=["IMAGE"],
+        image_config=types.ImageConfig(aspect_ratio=aspect, image_size=size),
+        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+    )
+    started = time.time()
+    resp = _call(_client(), model, contents, config)
+
+    image_bytes = None
+    texts = []
+    for cand in resp.candidates or []:
+        for part in (cand.content.parts if cand.content else None) or []:
+            if part.inline_data and part.inline_data.data and image_bytes is None:
+                image_bytes = part.inline_data.data
+            elif part.text:
+                texts.append(part.text)
+    if image_bytes is None:
+        reasons = []
+        if resp.prompt_feedback and resp.prompt_feedback.block_reason:
+            reasons.append(f"プロンプトがブロックされました: {resp.prompt_feedback.block_reason}")
+        for cand in resp.candidates or []:
+            if cand.finish_reason:
+                reasons.append(f"終了理由: {cand.finish_reason}")
+        reasons += [f"モデルの応答: {t}" for t in texts]
+        raise GenError("画像が返りませんでした。" + (" / ".join(reasons) or "理由不明"))
+
+    img = Image.open(io.BytesIO(image_bytes))
+    with _path_lock:
+        out = next_free_path(out)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        if out.suffix.lower() in (".jpg", ".jpeg"):
+            img.convert("RGB").save(out, quality=95)
+        else:
+            img.save(out)
+
+    if log:
+        rec = {
+            "time": dt.datetime.now().isoformat(timespec="seconds"),
+            "label": label,
+            "model": model,
+            "size": size,
+            "aspect": aspect,
+            "out": str(out),
+            "refs": [str(r) for r in refs],
+            "seconds": round(time.time() - started, 1),
+            "cost_usd": price_usd(model, size),
+            "prompt": prompt,
+        }
+        with _log_lock:
+            log.parent.mkdir(parents=True, exist_ok=True)
+            with open(log, "a", encoding="utf-8") as f:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+    return out
 
 
 def main() -> None:
@@ -92,71 +178,14 @@ def main() -> None:
     p.add_argument("--log", type=Path, help="生成記録を追記する JSONL ファイル")
     args = p.parse_args()
 
-    load_dotenv(REPO_DIR / ".env")
-    key = os.environ.get("GEMINI_API_KEY", "")
-    if not key or not key.isascii():
-        fail(f"GEMINI_API_KEY が設定されていません。{REPO_DIR / '.env'} にキーを記入してください")
-
     prompt = args.prompt if args.prompt is not None else args.prompt_file.read_text(encoding="utf-8")
-    contents: list = [prompt]
-    for ref in args.ref:
-        if not ref.exists():
-            fail(f"参照画像が見つかりません: {ref}")
-        contents.append(Image.open(ref))
-
-    config = types.GenerateContentConfig(
-        response_modalities=["IMAGE"],
-        image_config=types.ImageConfig(aspect_ratio=args.aspect, image_size=args.size),
-        automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
-    )
-    client = genai.Client(api_key=key)
-    started = time.time()
-    resp = generate(client, args.model, contents, config)
-
-    image_bytes = None
-    texts = []
-    for cand in resp.candidates or []:
-        for part in (cand.content.parts if cand.content else None) or []:
-            if part.inline_data and part.inline_data.data and image_bytes is None:
-                image_bytes = part.inline_data.data
-            elif part.text:
-                texts.append(part.text)
-    if image_bytes is None:
-        reasons = []
-        if resp.prompt_feedback and resp.prompt_feedback.block_reason:
-            reasons.append(f"プロンプトがブロックされました: {resp.prompt_feedback.block_reason}")
-        for cand in resp.candidates or []:
-            if cand.finish_reason:
-                reasons.append(f"終了理由: {cand.finish_reason}")
-        reasons += [f"モデルの応答: {t}" for t in texts]
-        fail("画像が返りませんでした。" + (" / ".join(reasons) or "理由不明"))
-
-    out = next_free_path(args.out)
-    out.parent.mkdir(parents=True, exist_ok=True)
-    img = Image.open(io.BytesIO(image_bytes))
-    if out.suffix.lower() in (".jpg", ".jpeg"):
-        img.convert("RGB").save(out, quality=95)
-    else:
-        img.save(out)
-
-    if args.log:
-        args.log.parent.mkdir(parents=True, exist_ok=True)
-        rec = {
-            "time": dt.datetime.now().isoformat(timespec="seconds"),
-            "model": args.model,
-            "size": args.size,
-            "aspect": args.aspect,
-            "out": str(out),
-            "refs": [str(r) for r in args.ref],
-            "seconds": round(time.time() - started, 1),
-            "cost_usd": load_config()["image"].get("cost_per_image_usd"),
-        }
-        with open(args.log, "a", encoding="utf-8") as f:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-
-    for t in texts:
-        print(f"モデルの応答: {t}")
-    print(f"画像サイズ: {img.width}x{img.height}")
+    try:
+        out = generate_image(prompt, args.out, args.ref, args.aspect, args.size, args.model, args.log)
+    except GenError as e:
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
+    with Image.open(out) as im:
+        print(f"画像サイズ: {im.width}x{im.height}")
     print(f"SAVED: {out}")
 
 

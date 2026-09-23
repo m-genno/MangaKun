@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run *.claude/skills/manga/scripts/*)",
+      "PowerShell(uv run *.claude/skills/manga/scripts/*)",
+      "PowerShell(uv run *.claude\\skills\\manga\\scripts\\*)",
+      "Bash(git pull)",
+      "PowerShell(git pull)",
+      "Edit(/*/manga.yaml)"
+    ],
+    "deny": [
+      "Read(/.env)",
+      "Edit(/.env)"
+    ]
+  }
+}

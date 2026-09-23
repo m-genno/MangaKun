@@ -10,15 +10,20 @@ image:
   size: 2K
   # 既定のアスペクト比（1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9）
   aspect: "3:4"
-  # 1枚あたりの概算費用（米ドル）。費用報告に使う
-  cost_per_image_usd: 0.101
+  # 1枚あたりの料金（米ドル、2026-09 時点）。費用の報告と上限チェックに使う
+  prices_usd:
+    gemini-3.1-flash-image: {0.5K: 0.045, 1K: 0.067, 2K: 0.101, 4K: 0.151}
+    gemini-3-pro-image: {1K: 0.134, 2K: 0.134, 4K: 0.24}
+    gemini-3.1-flash-lite-image: {1K: 0.0336}
+  usd_to_jpy: 150   # 円換算の目安
+  parallel: 4       # 同時に生成する枚数
 
 # カラーが既定。false でモノクロ（スクリーントーン風）
 color: true
 
-# おまかせモードの上限
-retake_limit_per_panel: 2
-max_images_per_page: 8
+# 生成枚数の上限（費用の暴走防止）
+retake_limit_per_panel: 2      # 自己チェックで NG のコマを自動で作り直す回数
+max_images_per_page: 8         # 作品全体の上限 = ページ数 × この値 + キャラ数 × 2 + 表紙 2
 
 # ページ合成（compose_page.py）
 page:
