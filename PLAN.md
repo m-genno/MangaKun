@@ -82,12 +82,12 @@ MangaKun/                          ← 作業フォルダ = Git リポジトリ
 │   ├─ layouts/                    ← コマ割りテンプレート（1〜6コマ、見開き用など）
 │   ├─ styles.md                   ← 画風プリセット（少女漫画、少年漫画、劇画、ほのぼの、絵本風…）
 │   └─ fonts/                      ← 源暎アンチック（セリフ）、Dela Gothic One（叫び・効果音・タイトル）。どちらも SIL OFL 1.1
-└─ <漫画タイトル>/                  ← 作品ごとのフォルダ（Git 管理外）
+└─ <作品名>/                      ← 作品ごとのフォルダ（Git 管理外）。**半角英数字**（例: panya-no-hana）。Kindle Previewer 4 はパスに日本語があると開けないため
     ├─ manga.yaml                  ← 台本：あらすじ・キャラ・ページ・コマ・セリフ・生成プロンプト・採用版
     ├─ characters/                 ← キャラ設定画（顔の統一に使う）
     ├─ panels/                     ← コマ画像（p03_02.png。旧版は p03_02_v1.png のように残す）
     ├─ pages/                      ← 完成ページ（p01.jpg …）
-    └─ output/                     ← cover.jpg / <タイトル>.epub / <タイトル>.pdf
+    └─ output/                     ← cover.jpg / <作品名>.epub / <作品名>.pdf / preview.jpg / preview_gray.jpg
 ```
 
 スクリプトは uv のインラインスクリプトメタデータ（PEP 723）で依存ライブラリを宣言し、`uv run scripts/xxx.py` で実行する。
@@ -179,7 +179,7 @@ pages:
 | 表紙 | 1600×2560px 以上の JPEG（タイトル文字入り） |
 | EPUB | EPUB3 固定レイアウト、`page-progression-direction="rtl"`（右綴じ） |
 | PDF | 確認・予備用 |
-| 確認方法 | `check_epub.py`（EPUBCheck）でエラー0件 → Kindle Previewer 3 で表示確認 → KDP にアップロード |
+| 確認方法 | `check_epub.py`（EPUBCheck と Kindle Previewer 4 の変換）でエラー0件 → Kindle Previewer 4 で表示確認 → KDP にアップロード |
 
 - カラーが既定のため、白黒 E-ink 端末ではグレースケール表示になる。そのため自己チェックでは、白黒にしたときに人物と背景が見分けられるか（明暗差が十分か）も確認する（`output/preview_gray.jpg`）
 - OPF の主な設定: `rendition:layout=pre-paginated`、`book-type=comic`、`primary-writing-mode=horizontal-rl`、`original-resolution=1600x2560`、spine は `page-progression-direction="rtl"`。表紙は単独（center）、本文は右ページから右・左の交互
@@ -223,7 +223,10 @@ pages:
    ```powershell
    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
-2. **Kindle Previewer 3**（Amazon 公式・無料）: EPUB の表示確認用
+2. **Kindle Previewer 4**（Amazon 公式・無料。3 はサポート終了）: EPUB の表示確認用
+   - ストアアプリ形式で入り、コマンド `kindlepreviewer4` が使えるようになる（`check_epub.py` が変換の確認に使う）
+   - **ファイルの場所（フォルダ名・ファイル名）に日本語があると、何も表示されずに開けない**（4.0.1 で確認）
+   - 固定レイアウトは Enhanced Typesetting 非対応のため、変換結果は Mobi になる（正常）
 3. `.env` を作成して API キーを記入
 
 作業フォルダ: `C:\Users\temoy\Documents\dev\MangaKun`（Git と同期の衝突を避けるため OneDrive 配下には置かない）

@@ -13,13 +13,14 @@
 
 出力（<作品フォルダ>/output/）:
     cover.jpg            表紙（KDP の「表紙」欄にもこれをアップロードする）
-    <タイトル>.epub      EPUB3 固定レイアウト・右綴じ（KDP にアップロードする本体）
-    <タイトル>.pdf       確認・予備用
+    <file_name>.epub     EPUB3 固定レイアウト・右綴じ（KDP にアップロードする本体）
+    <file_name>.pdf      確認・予備用（file_name は半角英数字。省略時は作品フォルダ名）
     preview.jpg          全ページの一覧（カラー）
     preview_gray.jpg     全ページの一覧（白黒）… E-ink 端末で人物と背景が見分けられるかの確認用
 
 manga.yaml の該当部分:
     title: パン屋のハナ
+    file_name: panya-no-hana     # 出力ファイル名（半角英数字）
     author: 作者名
     cover:
       image: panels/cover.png      # 表紙の絵（文字なし）。省略時は1ページ目のコマ画像
@@ -259,8 +260,15 @@ def contact_sheet(out: Path, cover: Path, pages: list[Path], gray: bool) -> None
 # ---------------------------------------------------------------- メイン
 
 
-def safe_filename(name: str) -> str:
-    return re.sub(r'[\\/:*?"<>|]', "_", name).strip() or "manga"
+def output_name(work: Path, manga: dict) -> str:
+    """出力ファイル名（拡張子なし）。Kindle Previewer 4 はパスに日本語があると開けないため半角英数字にする。
+
+    manga.yaml の file_name → 作品フォルダ名（半角英数字のとき）→ "manga" の順に使う。
+    """
+    for cand in (manga.get("file_name"), work.resolve().name):
+        if cand and re.fullmatch(r"[A-Za-z0-9._-]+", str(cand)):
+            return str(cand)
+    return "manga"
 
 
 def main() -> None:
@@ -296,7 +304,7 @@ def main() -> None:
         fail("ページがありません")
 
     out_dir = args.work / "output"
-    name = safe_filename(manga.get("title", "manga"))
+    name = output_name(args.work, manga)
     epub = out_dir / f"{name}.epub"
     build_epub(epub, manga, cover, pages, size)
     pdf = out_dir / f"{name}.pdf"
@@ -306,6 +314,9 @@ def main() -> None:
     for f in (epub, pdf, out_dir / "preview.jpg", out_dir / "preview_gray.jpg"):
         print(f"SAVED: {f}")
     print(f"ページ数: 表紙 + {len(pages)}ページ / EPUB {epub.stat().st_size / 1024 / 1024:.1f}MB")
+    if not str(epub.resolve()).isascii():
+        print("注意: EPUB の保存場所に日本語などの全角文字が含まれています。Kindle Previewer 4 では開けないため、"
+              "作品フォルダ名を半角英数字にしてください")
 
 
 if __name__ == "__main__":
