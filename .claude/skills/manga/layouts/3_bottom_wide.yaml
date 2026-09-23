@@ -1,0 +1,4 @@
+description: 上段に2コマ（右→左）、下段に大きく1コマ
+rows:
+  - {height: 1, cols: [1, 1]}
+  - {height: 1.4, cols: [1]}

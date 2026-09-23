@@ -19,3 +19,13 @@ color: true
 # おまかせモードの上限
 retake_limit_per_panel: 2
 max_images_per_page: 8
+
+# ページ合成（compose_page.py）
+page:
+  size: [1600, 2560]     # Kindle 推奨 1:1.6
+  margin: [0.05, 0.04]   # 外周の余白（幅・高さに対する割合）
+  gutter: [22, 44]       # コマ間の白（px）。左右の間 / 上下の間（漫画は上下を広めにする）
+  border: 5              # コマ枠線の太さ（px）
+  font_size: 44          # セリフの文字サイズ（px）
+  max_chars: 10          # 1列の最大文字数（改行を書かなかったときの自動折り返し）
+  jpeg_quality: 92

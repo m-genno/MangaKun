@@ -1,0 +1,5 @@
+description: 横長3段
+rows:
+  - {height: 1, cols: [1]}
+  - {height: 1, cols: [1]}
+  - {height: 1, cols: [1]}

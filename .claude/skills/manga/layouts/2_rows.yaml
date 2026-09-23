@@ -1,0 +1,4 @@
+description: 上下2段
+rows:
+  - {height: 1, cols: [1]}
+  - {height: 1, cols: [1]}

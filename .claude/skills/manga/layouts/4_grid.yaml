@@ -1,0 +1,4 @@
+description: 2段×2列（右上→左上→右下→左下）
+rows:
+  - {height: 1, cols: [1, 1]}
+  - {height: 1, cols: [1, 1]}

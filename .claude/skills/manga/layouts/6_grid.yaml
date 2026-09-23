@@ -1,0 +1,5 @@
+description: 3段×2列（会話の多い場面向け）
+rows:
+  - {height: 1, cols: [1, 1]}
+  - {height: 1, cols: [1, 1]}
+  - {height: 1, cols: [1, 1]}

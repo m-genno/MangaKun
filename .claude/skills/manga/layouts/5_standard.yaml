@@ -1,0 +1,5 @@
+description: 上に横長1コマ、中段2コマ、下段2コマ（標準的な5コマ）
+rows:
+  - {height: 0.9, cols: [1]}
+  - {height: 1, cols: [1, 1.4]}
+  - {height: 1, cols: [1.4, 1]}
