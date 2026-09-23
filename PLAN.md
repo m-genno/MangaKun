@@ -182,7 +182,7 @@ pages:
 | 確認方法 | `check_epub.py`（EPUBCheck と Kindle Previewer 4 の変換）でエラー0件 → Kindle Previewer 4 で表示確認 → KDP にアップロード |
 
 - カラーが既定のため、白黒 E-ink 端末ではグレースケール表示になる。そのため自己チェックでは、白黒にしたときに人物と背景が見分けられるか（明暗差が十分か）も確認する（`output/preview_gray.jpg`）
-- OPF の主な設定: `rendition:layout=pre-paginated`、`book-type=comic`、`primary-writing-mode=horizontal-rl`、`original-resolution=1600x2560`、spine は `page-progression-direction="rtl"`。表紙は単独（center）、本文は右ページから右・左の交互
+- OPF の主な設定: `rendition:layout=pre-paginated`、`book-type=comic`、`primary-writing-mode=horizontal-rl`、`original-resolution=1600x2560`、spine は `page-progression-direction="rtl"`。本文は1ページ目を右に置き右・左の交互。表紙は画像のみ入れてページには並べない（Kindle が自動で先頭に表示するため、並べると2回出る）。向きは固定しない（横向きで見開き）
 - KDP には `<タイトル>.epub` を本文として、`cover.jpg` を表紙としてアップロードする
 - KDP 登録時に「AI 生成コンテンツ」の申告が必要（テキスト・画像とも）
 - 出版前に KDP の最新の画像要件・EPUB 要件を確認する

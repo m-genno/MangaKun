@@ -139,18 +139,16 @@ def build_epub(out: Path, manga: dict, cover: Path, pages: list[Path], size: tup
     book_id = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, 'mangakun:' + title)}"
     modified = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    items = [("cover", "Images/cover.jpg", cover)] + [(f"p{i:03d}", f"Images/p{i:03d}.jpg", p)
-                                                        for i, p in enumerate(pages, 1)]
-    manifest, spine = [], []
+    # 表紙は画像だけ入れ、ページとしては並べない（Kindle がメタデータの表紙を自動で先頭に表示するため、
+    # ページにも入れると表紙が2回出る）
+    items = [(f"p{i:03d}", f"Images/p{i:03d}.jpg", p) for i, p in enumerate(pages, 1)]
+    manifest = ['<item id="img_cover" href="Images/cover.jpg" media-type="image/jpeg" properties="cover-image"/>']
+    spine = []
     for n, (pid, href, _) in enumerate(items):
-        props = ' properties="cover-image"' if pid == "cover" else ""
-        manifest.append(f'<item id="img_{pid}" href="{href}" media-type="image/jpeg"{props}/>')
+        manifest.append(f'<item id="img_{pid}" href="{href}" media-type="image/jpeg"/>')
         manifest.append(f'<item id="page_{pid}" href="Text/{pid}.xhtml" media-type="application/xhtml+xml"/>')
-        # 右綴じ: 表紙は単独、本文は右ページから始めて右・左の順に交互
-        if pid == "cover":
-            spread = "rendition:page-spread-center"
-        else:
-            spread = "page-spread-right" if n % 2 == 1 else "page-spread-left"
+        # 右綴じ: 1ページ目を右に置き、右・左の順に交互（横向きの見開きで 1-2, 3-4 … が並ぶ）
+        spread = "page-spread-right" if n % 2 == 0 else "page-spread-left"
         spine.append(f'<itemref idref="page_{pid}" properties="{spread}"/>')
 
     opf = f"""<?xml version="1.0" encoding="UTF-8"?>
@@ -163,13 +161,13 @@ def build_epub(out: Path, manga: dict, cover: Path, pages: list[Path], size: tup
 <meta property="dcterms:modified">{modified}</meta>
 <meta name="cover" content="img_cover"/>
 <meta property="rendition:layout">pre-paginated</meta>
-<meta property="rendition:orientation">portrait</meta>
+<meta property="rendition:orientation">auto</meta>
 <meta property="rendition:spread">landscape</meta>
 <meta name="fixed-layout" content="true"/>
 <meta name="original-resolution" content="{W}x{H}"/>
 <meta name="book-type" content="comic"/>
 <meta name="primary-writing-mode" content="horizontal-rl"/>
-<meta name="orientation-lock" content="portrait"/>
+<meta name="orientation-lock" content="none"/>
 <meta name="region-mag" content="false"/>
 <meta name="zero-gutter" content="true"/>
 <meta name="zero-margin" content="true"/>
@@ -191,11 +189,9 @@ def build_epub(out: Path, manga: dict, cover: Path, pages: list[Path], size: tup
 <head><title>目次</title></head>
 <body>
 <nav epub:type="toc" id="toc"><h1>目次</h1><ol>
-<li><a href="Text/cover.xhtml">表紙</a></li>
 <li><a href="Text/p001.xhtml">本文</a></li>
 </ol></nav>
 <nav epub:type="landmarks" hidden=""><ol>
-<li><a epub:type="cover" href="Text/cover.xhtml">表紙</a></li>
 <li><a epub:type="bodymatter" href="Text/p001.xhtml">本文</a></li>
 </ol></nav>
 </body>
@@ -206,8 +202,7 @@ def build_epub(out: Path, manga: dict, cover: Path, pages: list[Path], size: tup
 <head><meta name="dtb:uid" content="{book_id}"/></head>
 <docTitle><text>{html.escape(title)}</text></docTitle>
 <navMap>
-<navPoint id="n1" playOrder="1"><navLabel><text>表紙</text></navLabel><content src="Text/cover.xhtml"/></navPoint>
-<navPoint id="n2" playOrder="2"><navLabel><text>本文</text></navLabel><content src="Text/p001.xhtml"/></navPoint>
+<navPoint id="n1" playOrder="1"><navLabel><text>本文</text></navLabel><content src="Text/p001.xhtml"/></navPoint>
 </navMap>
 </ncx>
 """
@@ -225,13 +220,13 @@ def build_epub(out: Path, manga: dict, cover: Path, pages: list[Path], size: tup
         z.writestr("OEBPS/nav.xhtml", nav, compress_type=zipfile.ZIP_DEFLATED)
         z.writestr("OEBPS/toc.ncx", ncx, compress_type=zipfile.ZIP_DEFLATED)
         z.writestr("OEBPS/style.css", css, compress_type=zipfile.ZIP_DEFLATED)
+        z.write(cover, "OEBPS/Images/cover.jpg", compress_type=zipfile.ZIP_STORED)  # JPEG は圧縮しない
         for pid, href, src in items:
             with Image.open(src) as im:
                 w, h = im.size
-            label = "表紙" if pid == "cover" else f"{int(pid[1:])}ページ"
-            z.writestr(f"OEBPS/Text/{pid}.xhtml", xhtml_page(label, f"../{href}", w, h),
+            z.writestr(f"OEBPS/Text/{pid}.xhtml", xhtml_page(f"{int(pid[1:])}ページ", f"../{href}", w, h),
                        compress_type=zipfile.ZIP_DEFLATED)
-            z.write(src, f"OEBPS/{href}", compress_type=zipfile.ZIP_STORED)  # JPEG は圧縮しない
+            z.write(src, f"OEBPS/{href}", compress_type=zipfile.ZIP_STORED)
 
 
 # ---------------------------------------------------------------- PDF・一覧
