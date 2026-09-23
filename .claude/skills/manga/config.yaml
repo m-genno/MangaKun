@@ -1,0 +1,21 @@
+# MangaKun 設定
+
+image:
+  # Gemini 画像モデル（2026-09 時点の候補）
+  #   gemini-3.1-flash-image      … 標準。2K で約 $0.101/枚
+  #   gemini-3-pro-image          … 高品質。2K で約 $0.134/枚
+  #   gemini-3.1-flash-lite-image … 安価。1K のみ・約 $0.034/枚
+  model: gemini-3.1-flash-image
+  # 0.5K / 1K / 2K / 4K（Kindle 1600x2560 のページに配置するため 2K を既定にする）
+  size: 2K
+  # 既定のアスペクト比（1:1, 3:2, 2:3, 3:4, 4:3, 4:5, 5:4, 9:16, 16:9, 21:9）
+  aspect: "3:4"
+  # 1枚あたりの概算費用（米ドル）。費用報告に使う
+  cost_per_image_usd: 0.101
+
+# カラーが既定。false でモノクロ（スクリーントーン風）
+color: true
+
+# おまかせモードの上限
+retake_limit_per_panel: 2
+max_images_per_page: 8

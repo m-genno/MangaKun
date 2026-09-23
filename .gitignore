@@ -1,0 +1,13 @@
+# スキル本体だけを Git で管理する（ホワイトリスト方式）
+# 作品フォルダ・.env・個人設定はすべて除外される
+/*
+!/.gitignore
+!/.env.example
+!/README.md
+!/PLAN.md
+!/.claude/
+/.claude/*
+!/.claude/skills/
+!/.claude/settings.json
+
+__pycache__/
