@@ -136,6 +136,8 @@ def build_epub(out: Path, manga: dict, cover: Path, pages: list[Path], size: tup
     W, H = size
     title = manga.get("title", "無題")
     author = manga.get("author", "")
+    # 作者名が空の dc:creator は EPUBCheck のエラーになるので、未定なら入れない
+    creator = f"<dc:creator>{html.escape(author)}</dc:creator>\n" if author else ""
     book_id = f"urn:uuid:{uuid.uuid5(uuid.NAMESPACE_URL, 'mangakun:' + title)}"
     modified = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
@@ -156,8 +158,7 @@ def build_epub(out: Path, manga: dict, cover: Path, pages: list[Path], size: tup
 <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
 <dc:identifier id="BookID">{book_id}</dc:identifier>
 <dc:title>{html.escape(title)}</dc:title>
-<dc:creator>{html.escape(author)}</dc:creator>
-<dc:language>ja</dc:language>
+{creator}<dc:language>ja</dc:language>
 <meta property="dcterms:modified">{modified}</meta>
 <meta name="cover" content="img_cover"/>
 <meta property="rendition:layout">pre-paginated</meta>
